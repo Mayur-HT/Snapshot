@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String        @id @default(cuid())
+  email            String        @unique
+  name             String
+  passwordHash     String
+  selfieUrl        String
+  faceEmbedding    Bytes?
+  photos           Photo[]
+  // back-relations
+  matchedFaceTags  FaceTag[]
+  groupsOwned      Group[]
+  groupMemberships GroupMember[]
+  sharesReceived   Share[]
+  createdAt        DateTime      @default(now())
+}
+
+model Photo {
+  id        String    @id @default(cuid())
+  ownerId   String
+  owner     User      @relation(fields: [ownerId], references: [id])
+  url       String
+  faces     FaceTag[]
+  shares    Share[]
+  createdAt DateTime  @default(now())
+}
+
+model FaceTag {
+  id            String  @id @default(cuid())
+  photoId       String
+  photo         Photo   @relation(fields: [photoId], references: [id])
+  matchedUserId String?
+  matchedUser   User?   @relation(fields: [matchedUserId], references: [id])
+  boxX          Float
+  boxY          Float
+  boxW          Float
+  boxH          Float
+  embedding     Bytes?
+}
+
+model Group {
+  id      String        @id @default(cuid())
+  name    String
+  ownerId String
+  owner   User          @relation(fields: [ownerId], references: [id])
+  members GroupMember[]
+  invites GroupInvite[]
+}
+
+model GroupMember {
+  id      String @id @default(cuid())
+  groupId String
+  userId  String
+  group   Group  @relation(fields: [groupId], references: [id])
+  user    User   @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+}
+
+model Share {
+  id        String   @id @default(cuid())
+  photoId   String
+  toUserId  String
+  photo     Photo    @relation(fields: [photoId], references: [id])
+  toUser    User     @relation(fields: [toUserId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model GroupInvite {
+  id        String    @id @default(cuid())
+  groupId   String
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  email     String?
+  invitedBy String
+  used      Boolean   @default(false)
+  usedAt    DateTime?
+  usedBy    String?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+}
